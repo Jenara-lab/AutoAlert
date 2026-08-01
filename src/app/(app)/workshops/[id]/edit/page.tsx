@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/ui/page-header";
 import { WorkshopForm } from "@/components/workshops/workshop-form";
-import { getWorkshop } from "@/app/actions/workshops";
+import { getWorkshop, updateWorkshop } from "@/app/actions/workshops";
 
 export default async function EditWorkshopPage({
   params,
@@ -26,7 +26,10 @@ export default async function EditWorkshopPage({
       <PageHeader title="Editar taller" backHref={`/workshops/${id}`} />
       <div className="mx-auto max-w-lg">
         <WorkshopForm
-          id={id}
+          action={async (values) => {
+            "use server";
+            return updateWorkshop(id, values);
+          }}
           defaultValues={{
             name: workshop.name,
             address: workshop.address ?? undefined,

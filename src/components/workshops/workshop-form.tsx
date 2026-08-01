@@ -2,24 +2,24 @@
 
 import React, { useTransition, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import {
   createWorkshopSchema,
   type CreateWorkshopValues,
-  type UpdateWorkshopValues,
 } from "@/lib/validations/workshops";
-import { createWorkshop, updateWorkshop } from "@/app/actions/workshops";
 
 export function WorkshopForm({
-  id,
+  action,
   defaultValues,
   mode = "create",
 }: {
-  id?: string;
+  action: (values: CreateWorkshopValues) => Promise<{ error?: string; data?: string }>;
   defaultValues?: Partial<CreateWorkshopValues>;
   mode?: "create" | "edit";
 }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string>();
   const [success, setSuccess] = useState(false);
@@ -41,26 +41,17 @@ export function WorkshopForm({
     setSuccess(false);
     setCreatedId(undefined);
     startTransition(async () => {
-      let result:
-        | { error: string; data?: never }
-        | { error?: never; data: string | undefined };
-      if (mode === "edit" && id) {
-        result = await updateWorkshop(id, values as UpdateWorkshopValues);
-      } else {
-        result = await createWorkshop(values);
-      }
-
-      if ("error" in result) {
+      const result = await action(values);
+      if (result?.error) {
         setServerError(result.error);
-      } else if (result.data) {
+      } else if (result?.data) {
         setSuccess(true);
-        setCreatedId(mode === "create" ? result.data : id);
+        setCreatedId(result.data);
         if (mode === "create") {
           form.reset({ name: "", address: "", phone: "", manager: "" });
         }
       } else {
-        setSuccess(true);
-        setCreatedId(id);
+        router.back();
       }
     });
   }
@@ -98,7 +89,7 @@ export function WorkshopForm({
           <p className="font-semibold">
             Taller {mode === "create" ? "creado" : "actualizado"} correctamente.
           </p>
-          {createdId && (
+          {mode === "create" && createdId && (
             <div className="mt-3 flex flex-wrap gap-2">
               <Link
                 href={`/workshops/${createdId}`}

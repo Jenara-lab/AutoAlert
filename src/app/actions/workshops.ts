@@ -98,12 +98,7 @@ export async function createWorkshop(values: CreateWorkshopValues): Promise<Acti
     .select("id")
     .single();
 
-  if (error) {
-    console.error("[createWorkshop] insert error:", error);
-    return {
-      error: `No se pudo crear el taller: ${error.message || error.code || "error desconocido"}`,
-    };
-  }
+  if (error) return { error: "No se pudo crear el taller." };
 
   revalidatePath("/workshops");
   return { data: data.id };
