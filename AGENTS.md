@@ -21,7 +21,7 @@ Read docs in numbered sequence. Start with `docs/00-README.md`, then 01–05 for
 
 ## Tech stack
 
-Next.js App Router, TypeScript strict, Tailwind CSS, React Hook Form + Zod, Supabase (PostgreSQL, Auth, RLS), Vercel, CallMeBot (optional WhatsApp).
+Next.js App Router, TypeScript strict, Tailwind CSS, React Hook Form + Zod, Supabase (PostgreSQL, Auth, RLS), Vercel, UltraMsg (optional WhatsApp via Supabase Edge Function).
 
 ## Folder structure
 

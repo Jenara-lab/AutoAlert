@@ -11,7 +11,7 @@ flowchart LR
   N --> S[Supabase Auth and PostgreSQL]
   A --> S
   C[Vercel Cron] --> A
-  A --> W[CallMeBot or Email]
+  A --> W[UltraMsg or Email]
 ```
 
 ## Rules

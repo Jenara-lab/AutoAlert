@@ -11,7 +11,7 @@
 | Auth | Supabase Auth | Email/password sessions. |
 | Authorization | Supabase RLS | Data isolation at database level. |
 | Hosting | Vercel | Deployment and scheduled jobs. |
-| Messaging | CallMeBot | Optional WhatsApp delivery. |
+| Messaging | UltraMsg via Supabase Edge Function | Optional WhatsApp delivery. |
 
 Use Supabase SSR helpers for server-side session access. Never expose `SUPABASE_SERVICE_ROLE_KEY` to the browser.
 

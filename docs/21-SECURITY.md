@@ -16,7 +16,7 @@
 
 ## Data protection
 
-- Use server-only variables for service role, cron secret, and CallMeBot key.
+- Use server-only variables for service role, cron secret, and UltraMsg token/instance ID.
 - Normalize plates, validate numeric ranges, trim text, and limit notes to 1,000 characters.
 - Add rate limiting to auth-adjacent and notification endpoints if time permits.
 - Use soft deletes for user-created core entities to preserve history.

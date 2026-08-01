@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #111111;
+  --canvas: #f7f7f8;
+  --surface: #ffffff;
+  --line: #e5e7eb;
+  --muted: #6b7280;
+  --brand: #d71920;
+  --brand-dark: #a80f16;
+  --success: #15803d;
+  --warning: #d97706;
+  --danger: #dc2626;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+/* Focus ring utility */
+.focus-ring:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
