@@ -25,6 +25,11 @@ export const createVehicleSchema = z.object({
     .optional()
     .or(z.literal("")),
   fuelType: z.string().trim().min(1, "Selecciona el tipo de combustible.").max(30),
+  currentMileage: z.coerce
+    .number()
+    .int()
+    .min(0, "El kilometraje no puede ser negativo.")
+    .optional(),
 });
 
 export const updateVehicleSchema = createVehicleSchema.partial();

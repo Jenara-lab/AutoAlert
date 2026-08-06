@@ -5,7 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/permissions/auth";
 import {
   createMaintenanceSchema,
+  updateMaintenanceSchema,
   type CreateMaintenanceValues,
+  type UpdateMaintenanceValues,
 } from "@/lib/validations/maintenance";
 import { syncMaintenanceAlert } from "@/lib/alerts/sync";
 
@@ -215,13 +217,22 @@ export async function createMaintenance(
 
 export async function updateMaintenance(
   id: string,
-  values: Partial<CreateMaintenanceValues>,
+  values: UpdateMaintenanceValues,
 ): Promise<ActionResult> {
   const user = await requireAuth();
   const supabase = await createClient();
 
-  const parsed = createMaintenanceSchema.partial().safeParse(values);
+  const parsed = updateMaintenanceSchema.safeParse(values);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisa los datos." };
+
+  const d = parsed.data;
+  const labor = d.costLabor ?? 0;
+  const parts = d.costParts ?? 0;
+  const hasLabor = labor > 0;
+  const hasParts = parts > 0;
+  if ((hasLabor || hasParts) && d.costTotal !== undefined && d.costTotal !== labor + parts) {
+    return { error: "Si indicas mano de obra o repuestos, el total debe ser igual a su suma." };
+  }
 
   const { data: existing } = await supabase
     .from("maintenance_records")
@@ -234,7 +245,6 @@ export async function updateMaintenance(
   if (existing.creator_id !== user.id)
     return { error: "No tienes permiso para editar este registro." };
 
-  const d = parsed.data;
   const updateData: Record<string, unknown> = {};
   if (d.vehicleId !== undefined) updateData.vehicle_id = d.vehicleId;
   if (d.workshopId !== undefined)

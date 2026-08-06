@@ -34,6 +34,7 @@ export async function getDashboardData(): Promise<
   const supabase = await createClient();
 
   const now = new Date();
+  const today = now.toISOString().split("T")[0];
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
     .toISOString()
     .split("T")[0];
@@ -60,7 +61,7 @@ export async function getDashboardData(): Promise<
       )
       .is("deleted_at", null)
       .not("next_service_date", "is", null)
-      .gte("next_service_date", monthStart),
+      .gte("next_service_date", today),
 
     supabase
       .from("operating_expenses")
@@ -76,6 +77,7 @@ export async function getDashboardData(): Promise<
       )
       .eq("recipient_id", user.id)
       .eq("status", "pending")
+      .or(`due_date.is.null,due_date.gte.${today}`)
       .order("due_date", { ascending: true })
       .limit(10),
   ]);

@@ -30,6 +30,7 @@ export async function getAlerts(filters?: {
 > {
   const user = await requireAuth();
   const supabase = await createClient();
+  const today = new Date().toISOString().split("T")[0];
 
   let query = supabase
     .from("alerts")
@@ -37,6 +38,7 @@ export async function getAlerts(filters?: {
       "id, title, message, kind, channel, status, due_date, due_mileage, vehicle_id, created_at, read_at, vehicles!inner(plate, make, model)"
     )
     .eq("recipient_id", user.id)
+    .or(`due_date.is.null,due_date.gte.${today}`)
     .order("created_at", { ascending: false });
 
   if (filters?.status) query = query.eq("status", filters.status);
@@ -106,17 +108,20 @@ export async function getAlertStats(): Promise<
 > {
   const user = await requireAuth();
   const supabase = await createClient();
+  const today = new Date().toISOString().split("T")[0];
 
   const [pendingResult, totalResult] = await Promise.all([
     supabase
       .from("alerts")
       .select("id", { count: "exact", head: true })
       .eq("recipient_id", user.id)
-      .eq("status", "pending"),
+      .eq("status", "pending")
+      .or(`due_date.is.null,due_date.gte.${today}`),
     supabase
       .from("alerts")
       .select("id", { count: "exact", head: true })
-      .eq("recipient_id", user.id),
+      .eq("recipient_id", user.id)
+      .or(`due_date.is.null,due_date.gte.${today}`),
   ]);
 
   return {
@@ -169,7 +174,7 @@ export async function getUpcomingAlerts(): Promise<
       .select("id, vehicle_id, type, next_service_date, next_service_mileage")
       .is("deleted_at", null)
       .in("vehicle_id", vehicleIds)
-      .or("next_service_date.gte." + today + ",next_service_mileage.not.is.null"),
+      .or("next_service_date.not.is.null,next_service_mileage.not.is.null"),
     supabase
       .from("operating_expenses")
       .select("id, vehicle_id, type, due_date")
@@ -210,7 +215,11 @@ export async function getUpcomingAlerts(): Promise<
       if (!v) continue;
       const label = TYPE_LABELS[m.type] ?? m.type;
 
-      if (m.next_service_date) {
+      const isFutureDate = m.next_service_date && m.next_service_date >= today;
+      const isFutureMileage =
+        m.next_service_mileage != null && m.next_service_mileage >= v.currentMileage;
+
+      if (isFutureDate) {
         items.push({
           id: `${m.id}-maintenance-date`,
           vehicleId: m.vehicle_id,
@@ -228,7 +237,7 @@ export async function getUpcomingAlerts(): Promise<
         });
       }
 
-      if (m.next_service_mileage != null) {
+      if (isFutureMileage) {
         items.push({
           id: `${m.id}-maintenance-mileage`,
           vehicleId: m.vehicle_id,

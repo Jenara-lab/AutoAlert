@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/ui/page-header";
+import { ButtonLink } from "@/components/ui/button";
 import { CostBreakdown } from "@/components/maintenance/cost-breakdown";
 import { getMaintenanceRecord } from "@/app/actions/maintenance";
 import { getOperatingExpense } from "@/app/actions/expenses";
+import { createClient } from "@/lib/supabase/server";
 import { formatCurrency, formatDate, formatMileage } from "@/lib/utils/format";
+import { requireAuth } from "@/lib/permissions/auth";
 import { MAINTENANCE_TYPE_LABELS, EXPENSE_TYPE_LABELS } from "@/types/domain";
 
 export default async function RecordDetailPage({
@@ -15,7 +18,14 @@ export default async function RecordDetailPage({
   searchParams: Promise<{ cat?: string }>;
 }) {
   const { id } = await params;
-  const { cat } = await searchParams;
+  let { cat } = await searchParams;
+  const user = await requireAuth();
+
+  if (!cat) {
+    const detected = await detectCategory(id);
+    if (!detected) notFound();
+    cat = detected;
+  }
 
   if (cat === "mileage") {
     return (
@@ -34,6 +44,7 @@ export default async function RecordDetailPage({
 
     const r = result.data as unknown as {
       id: string;
+      creator_id: string;
       type: string;
       mileage: number;
       service_date: string;
@@ -47,11 +58,23 @@ export default async function RecordDetailPage({
       workshops: { name: string } | null;
     };
 
+    const canEdit = r.creator_id === user.id;
+
     return (
       <section>
         <PageHeader
           title={MAINTENANCE_TYPE_LABELS[r.type as keyof typeof MAINTENANCE_TYPE_LABELS] ?? r.type}
           backHref="/history"
+          action={
+            canEdit ? (
+              <ButtonLink
+                href={`/history/${id}/edit?cat=maintenance`}
+                variant="secondary"
+              >
+                Editar
+              </ButtonLink>
+            ) : undefined
+          }
         />
         <div className="mx-auto max-w-lg space-y-4">
           <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 space-y-3">
@@ -136,6 +159,42 @@ export default async function RecordDetailPage({
   }
 
   notFound();
+}
+
+async function detectCategory(
+  id: string,
+): Promise<"maintenance" | "fuel" | "insurance" | "registration" | "mileage" | null> {
+  const supabase = await createClient();
+
+  const { data: maintenance } = await supabase
+    .from("maintenance_records")
+    .select("id")
+    .eq("id", id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (maintenance) return "maintenance";
+
+  const { data: expense } = await supabase
+    .from("operating_expenses")
+    .select("id, type")
+    .eq("id", id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (expense) {
+    const type = (expense as { type: string }).type;
+    if (type === "fuel" || type === "insurance" || type === "registration") {
+      return type;
+    }
+  }
+
+  const { data: mileage } = await supabase
+    .from("mileage_logs")
+    .select("id")
+    .eq("id", id)
+    .maybeSingle();
+  if (mileage) return "mileage";
+
+  return null;
 }
 
 function Row({ label, value }: { label: string; value: string }) {

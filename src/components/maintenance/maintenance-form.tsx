@@ -13,7 +13,6 @@ import {
   createMaintenanceSchema,
   type CreateMaintenanceValues,
 } from "@/lib/validations/maintenance";
-import { createMaintenance } from "@/app/actions/maintenance";
 import type { MaintenanceType } from "@/types/domain";
 
 export function MaintenanceForm({
@@ -22,12 +21,18 @@ export function MaintenanceForm({
   onSuccess,
   initialData,
   workshopRequired = false,
+  mode = "create",
+  action,
+  redirectTo,
 }: {
   vehicleId: string;
-  serviceType: MaintenanceType;
-  onSuccess?: (id: string) => void;
+  serviceType?: MaintenanceType;
+  onSuccess?: (id?: string) => void;
   initialData?: Partial<CreateMaintenanceValues>;
   workshopRequired?: boolean;
+  mode?: "create" | "edit";
+  action?: (values: CreateMaintenanceValues) => Promise<{ error?: string; data?: string }>;
+  redirectTo?: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -39,7 +44,7 @@ export function MaintenanceForm({
     defaultValues: {
       vehicleId: initialData?.vehicleId ?? vehicleId,
       workshopId: initialData?.workshopId ?? "",
-      type: initialData?.type ?? serviceType,
+      type: initialData?.type ?? serviceType ?? "general_repair",
       mileage: initialData?.mileage ?? 0,
       serviceDate: initialData?.serviceDate ?? new Date().toISOString().split("T")[0],
       description: initialData?.description ?? "",
@@ -57,16 +62,23 @@ export function MaintenanceForm({
     setServerError(undefined);
     setSuccess(false);
     startTransition(async () => {
-      const result = await createMaintenance({
-        ...values,
-        vehicleId,
-        type: serviceType,
-      });
+      const result =
+        mode === "edit" && action
+          ? await action(values)
+          : await import("@/app/actions/maintenance").then((m) =>
+              m.createMaintenance({
+                ...values,
+                vehicleId,
+                type: serviceType ?? (values.type as MaintenanceType),
+              }),
+            );
       if ("error" in result) {
         setServerError(result.error);
       } else {
         setSuccess(true);
-        if (onSuccess) {
+        if (redirectTo) {
+          router.push(redirectTo);
+        } else if (onSuccess) {
           onSuccess(result.data);
         } else {
           router.push(`/vehicles/${vehicleId}`);
@@ -149,7 +161,7 @@ export function MaintenanceForm({
 
       {success && (
         <p className="rounded-xl bg-[#15803D]/10 p-3 text-sm text-[#15803D]">
-          Servicio registrado correctamente.
+          {mode === "edit" ? "Servicio actualizado correctamente." : "Servicio registrado correctamente."}
         </p>
       )}
 
@@ -158,7 +170,7 @@ export function MaintenanceForm({
         disabled={pending}
         type="submit"
       >
-        {pending ? "Guardando…" : initialData ? "Guardar cambios" : "Registrar servicio"}
+        {pending ? "Guardando…" : mode === "edit" ? "Guardar cambios" : "Registrar servicio"}
       </button>
     </form>
   );

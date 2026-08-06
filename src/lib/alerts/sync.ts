@@ -34,59 +34,81 @@ export async function syncMaintenanceAlert(
 
   const { data: vehicle } = await supabase
     .from("vehicles")
-    .select("owner_id")
+    .select("owner_id, current_mileage")
     .eq("id", record.vehicle_id)
     .single();
 
   if (!vehicle) return;
 
+  const today = new Date().toISOString().split("T")[0];
   const label = MAINTENANCE_LABELS[record.type] ?? record.type;
 
   if (hasDate) {
-    try {
-      await supabase.from("alerts").upsert(
-        {
-          recipient_id: vehicle.owner_id,
-          vehicle_id: record.vehicle_id,
-          source_record_id: record.id,
-          source_type: "maintenance_records",
-          kind: "maintenance_date",
-          channel: "in_app",
-          title: `Próximo servicio: ${label}`,
-          message: `El servicio de ${label} está programado para el ${record.next_service_date}.`,
-          due_date: record.next_service_date,
-          due_mileage: null,
-          service_type: record.type,
-          status: "pending",
-        },
-        { onConflict: "source_record_id,recipient_id,channel" },
-      );
-    } catch (err) {
-      console.error("[syncMaintenanceAlert] date upsert error:", err);
+    if (record.next_service_date && record.next_service_date >= today) {
+      try {
+        await supabase.from("alerts").upsert(
+          {
+            recipient_id: vehicle.owner_id,
+            vehicle_id: record.vehicle_id,
+            source_record_id: record.id,
+            source_type: "maintenance_records",
+            kind: "maintenance_date",
+            channel: "in_app",
+            title: `Próximo servicio: ${label}`,
+            message: `El servicio de ${label} está programado para el ${record.next_service_date}.`,
+            due_date: record.next_service_date,
+            due_mileage: null,
+            service_type: record.type,
+            status: "pending",
+          },
+          { onConflict: "source_record_id,recipient_id,channel" },
+        );
+      } catch (err) {
+        console.error("[syncMaintenanceAlert] date upsert error:", err);
+      }
+    } else {
+      await supabase
+        .from("alerts")
+        .update({ status: "dismissed" })
+        .eq("source_record_id", record.id)
+        .eq("source_type", "maintenance_records")
+        .eq("kind", "maintenance_date");
     }
   }
 
   if (hasMileage) {
-    try {
-      await supabase.from("alerts").upsert(
-        {
-          recipient_id: vehicle.owner_id,
-          vehicle_id: record.vehicle_id,
-          source_record_id: `${record.id}:mileage`,
-          source_type: "maintenance_records",
-          kind: "maintenance_mileage",
-          channel: "in_app",
-          title: `Kilometraje: ${label}`,
-          message: `El próximo servicio de ${label} está programado a los ${record.next_service_mileage} km.`,
-          due_date: null,
-          due_mileage: record.next_service_mileage,
-          service_type: record.type,
-          status: "pending",
-        },
-        { onConflict: "source_record_id,recipient_id,channel" },
-      );
-    } catch (err) {
-      console.error("[syncMaintenanceAlert] mileage upsert error:", err);
+    if (
+      record.next_service_mileage != null &&
+      record.next_service_mileage >= vehicle.current_mileage
+    ) {
+      try {
+        await supabase.from("alerts").upsert(
+          {
+            recipient_id: vehicle.owner_id,
+            vehicle_id: record.vehicle_id,
+            source_record_id: `${record.id}:mileage`,
+            source_type: "maintenance_records",
+            kind: "maintenance_mileage",
+            channel: "in_app",
+            title: `Kilometraje: ${label}`,
+            message: `El próximo servicio de ${label} está programado a los ${record.next_service_mileage} km.`,
+            due_date: null,
+            due_mileage: record.next_service_mileage,
+            service_type: record.type,
+            status: "pending",
+          },
+          { onConflict: "source_record_id,recipient_id,channel" },
+        );
+      } catch (err) {
+        console.error("[syncMaintenanceAlert] mileage upsert error:", err);
+      }
+    } else {
+      await supabase
+        .from("alerts")
+        .update({ status: "dismissed" })
+        .eq("source_record_id", `${record.id}:mileage`)
+        .eq("source_type", "maintenance_records")
+        .eq("kind", "maintenance_mileage");
     }
   }
 }
@@ -110,7 +132,9 @@ export async function syncExpenseAlert(
 
   if (!vehicle) return;
 
-  if (!record.due_date) {
+  const today = new Date().toISOString().split("T")[0];
+
+  if (!record.due_date || record.due_date < today) {
     await supabase
       .from("alerts")
       .update({ status: "dismissed" })

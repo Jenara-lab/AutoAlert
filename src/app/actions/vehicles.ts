@@ -99,6 +99,7 @@ export async function createVehicle(values: CreateVehicleValues): Promise<Action
       year: parsed.data.year,
       vin,
       fuel_type: parsed.data.fuelType,
+      current_mileage: parsed.data.currentMileage ?? 0,
     })
     .select("id")
     .single();
@@ -125,15 +126,22 @@ export async function updateVehicle(
 
   const supabase = await createClient();
 
-  const { error: checkError } = await supabase
+  const { data: existing, error: checkError } = await supabase
     .from("vehicles")
-    .select("id")
+    .select("id, current_mileage")
     .eq("id", id)
     .eq("owner_id", user.id)
     .is("deleted_at", null)
     .single();
 
-  if (checkError) return { error: "Vehículo no encontrado." };
+  if (checkError || !existing) return { error: "Vehículo no encontrado." };
+
+  if (
+    parsed.data.currentMileage !== undefined &&
+    parsed.data.currentMileage < existing.current_mileage
+  ) {
+    return { error: "El kilometraje no puede ser menor al actual del vehículo." };
+  }
 
   const updateData: Record<string, unknown> = {};
   if (parsed.data.plate !== undefined) {
@@ -145,6 +153,8 @@ export async function updateVehicle(
   if (parsed.data.year !== undefined) updateData.year = parsed.data.year;
   if (parsed.data.vin !== undefined) updateData.vin = parsed.data.vin.toUpperCase() || null;
   if (parsed.data.fuelType !== undefined) updateData.fuel_type = parsed.data.fuelType;
+  if (parsed.data.currentMileage !== undefined)
+    updateData.current_mileage = parsed.data.currentMileage;
 
   if (Object.keys(updateData).length === 0) return { data: undefined };
 

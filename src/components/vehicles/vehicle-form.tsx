@@ -10,6 +10,7 @@ import {
   type CreateVehicleValues,
 } from "@/lib/validations/vehicles";
 import { VEHICLE_MAKES, getModelsForMake } from "@/lib/utils/vehicle-catalog";
+import { MileageInput } from "@/components/ui/mileage-input";
 import { ButtonLink } from "@/components/ui/button";
 
 const FUEL_TYPES = ["Gasolina", "Diesel", "Eléctrico", "Híbrido", "GNV"];
@@ -38,6 +39,7 @@ export function VehicleForm({
       year: new Date().getFullYear(),
       vin: "",
       fuelType: "Gasolina",
+      currentMileage: 0,
       ...defaultValues,
     },
   });
@@ -142,6 +144,13 @@ export function VehicleForm({
           ))}
         </select>
       </Field>
+
+      <MileageInput
+        label="Kilometraje actual"
+        placeholder="Ej: 45000"
+        {...form.register("currentMileage")}
+        error={form.formState.errors.currentMileage?.message}
+      />
 
       {serverError && (
         <p role="alert" className="rounded-xl bg-[#DC2626]/10 p-3 text-sm text-[#DC2626]">

@@ -30,6 +30,7 @@ export async function processAlerts(): Promise<{
 }> {
   const supabase = await createClient();
   const candidates: AlertCandidate[] = [];
+  const today = new Date().toISOString().split("T")[0];
 
   const { data: profiles } = await supabase
     .from("profiles")
@@ -59,7 +60,7 @@ export async function processAlerts(): Promise<{
         for (const m of maintenances) {
           const label = MAINTENANCE_LABELS[m.type] ?? m.type;
 
-          if (m.next_service_date) {
+          if (m.next_service_date && m.next_service_date >= today) {
             candidates.push({
               vehicleId: vehicle.id,
               recipientId: profile.id,
@@ -74,7 +75,10 @@ export async function processAlerts(): Promise<{
             });
           }
 
-          if (m.next_service_mileage != null) {
+          if (
+            m.next_service_mileage != null &&
+            m.next_service_mileage >= vehicle.current_mileage
+          ) {
             candidates.push({
               vehicleId: vehicle.id,
               recipientId: profile.id,
@@ -101,6 +105,7 @@ export async function processAlerts(): Promise<{
 
       if (insurances) {
         for (const i of insurances) {
+          if (!i.due_date || i.due_date < today) continue;
           candidates.push({
             vehicleId: vehicle.id,
             recipientId: profile.id,
@@ -126,6 +131,7 @@ export async function processAlerts(): Promise<{
 
       if (registrations) {
         for (const r of registrations) {
+          if (!r.due_date || r.due_date < today) continue;
           candidates.push({
             vehicleId: vehicle.id,
             recipientId: profile.id,
@@ -226,6 +232,7 @@ export function isAlertDue(
   if (alert.due_date) {
     const due = new Date(alert.due_date);
     due.setHours(0, 0, 0, 0);
+    if (due < today) return false;
     const lead = new Date(today.getTime() + leadDays * 24 * 60 * 60 * 1000);
     if (due <= lead) return true;
   }
