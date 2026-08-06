@@ -3,10 +3,10 @@ import { cn } from "@/lib/utils/format";
 type BadgeVariant = "success" | "warning" | "danger" | "muted";
 
 const variantStyles: Record<BadgeVariant, string> = {
-  success: "bg-[#15803D]/10 text-[#15803D]",
-  warning: "bg-[#D97706]/10 text-[#D97706]",
-  danger: "bg-[#DC2626]/10 text-[#DC2626]",
-  muted: "bg-[#F7F7F8] text-[#6B7280]",
+  success: "bg-green-100 text-green-700 ring-1 ring-green-200",
+  warning: "bg-amber-100 text-amber-700 ring-1 ring-amber-200",
+  danger: "bg-red-100 text-red-700 ring-1 ring-red-200",
+  muted: "bg-gray-100 text-gray-600 ring-1 ring-gray-200",
 };
 
 export function StatusBadge({
@@ -19,7 +19,7 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
         variantStyles[variant],
       )}
     >
